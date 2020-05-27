@@ -1,22 +1,30 @@
-// import p5;
+var imported = document.createElement('script');
+imported.src = "Vector.js";
+document.head.appendChild(imported);
 
 const canvas = document.querySelector('canvas');
 const paragraph = document.querySelector('p');
+
+
 
 const ctx = canvas.getContext('2d');
 
 const width = canvas.width = window.innerWidth;
 const height = canvas.height = window.innerHeight;
 
-let tmp = 0;  const framerate = 1; //every (framerate's+1) frame
-
-const tension = 30  *0.01;
-const dv = 80*0.01;
-const vLimit = 7;
+//SETTINGS
+let framerate = 1;          let tmp = 0;
+let BestScore = 99999;
+const tension = 80   *0.01;
+const acceleration = 100   *0.01;
+const vLimitation = 10;
+const koefficient = 10   *0.00001
 
 const ballsLimit = 20;
 let ballsCount = 0;
+const timeDelation = 500;
 
+//**************************************************************************************\\
 
 function random(min, max) {
   const num = Math.floor(Math.random() * (max - min + 1)) + min;
@@ -27,20 +35,18 @@ function randomColor(){
 }
 
 
-
-function Shape(x, y, vx, vy, exists){
-  this.x = x;
-  this.y = y;
-  this.vx= vx;
-  this.vy = vy;
+function Shape(coordinate, velocity, exists){
+  this.coordinate = coordinate;
+  this.velocity= velocity;
   this.exists = exists;
 }
 
-function Ball(x, y, vx, vy, exists, color, size, mass){
-  Shape.call(this, x, y, vx, vy, exists);
+function Ball(coordinate, velocity, exists, color, size, mass, time){
+  Shape.call(this, coordinate, velocity, exists);
   this.color = color;
   this.size = size;
   this.mass = mass;
+  this.time = time;
 }
 Ball.prototype = Object.create(Shape.prototype);
 Ball.prototype.constructor = Ball;
@@ -49,110 +55,111 @@ Ball.prototype.draw = function() {
   if (this.exists == true){
     ctx.beginPath();
     ctx.fillStyle = this.color;
-    ctx.arc(this.x, this.y, this.size, 0, 2 * Math.PI);
+    ctx.arc(this.coordinate.x, this.coordinate.y, this.size, 0, 2 * Math.PI);
     ctx.fill();
   }
 }
 Ball.prototype.update = function() {
-  if ((this.x + this.size) >= width) {
-    this.vx = -(this.vx);
+  if (this.exists){
+    if ((this.coordinate.x + this.size) >= width) {
+      this.velocity.x = -(this.velocity.x);
+    }
+    if ((this.coordinate.x - this.size) <= 0) {
+      this.velocity.x = -(this.velocity.x);
+    }
+    if ((this.coordinate.y + this.size) >= height) {
+      this.velocity.y = -(this.velocity.y);
+    }
+    if ((this.coordinate.y - this.size) <= 0) {
+      this.velocity.y = -(this.velocity.y);
+    }
+    this.coordinate.addTo(this.velocity);
   }
-  if ((this.x - this.size) <= 0) {
-    this.vx = -(this.vx);
-  }
-  if ((this.y + this.size) >= height) {
-    this.vy = -(this.vy);
-  }
-  if ((this.y - this.size) <= 0) {
-    this.vy = -(this.vy);
-  }
-  this.x += this.vx;
-  this.y += this.vy ;
 }
+timer.start();
 Ball.prototype.collisionDetect = function() {
   if (this.exists){
     for (let j = 0; j < balls.length; j++) {
-      if (!(this === balls[j])) {
-        const dx = this.x - balls[j].x;
-        const dy = this.y - balls[j].y;
+      if (!(this === balls[j]) && balls[j].exists) {
+        const dx = this.coordinate.x - balls[j].coordinate.x;
+        const dy = this.coordinate.y - balls[j].coordinate.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance< this.size + balls[j].size && balls[j].exists) {
+        if ((distance< this.size + balls[j].size && balls[j].exists) && ((timer.getTime() - this.time)>timeDelation) && (((timer.getTime()) - balls[j].time )>timeDelation)) {
           balls[j].color = this.color = randomColor();
+          balls[j].time = timer.getTime();
+          this.time = timer.getTime();
         }
       }
     }
   }
 }
 
-
 let balls = [];
-while (balls.length < ballsLimit) {
-  let size = random(10,24);
-  let ball = new Ball(
-    // ball position always drawn at least one ball width
-    // away from the edge of the canvas, to avoid drawing errors
-    random(0 + size,width - size),
-    random(0 + size,height - size),
-    random(-5,5),
-    random(-5,5),
-    true, //exists
-    randomColor(),
-    size,
-    size*size
-  );
-  balls.push(ball);
-  ballsCount ++;
-  paragraph.textContent = 'Balls count: ' + ballsCount+'.';
-}
+function createBalls(){
+  balls = [];
+  while (balls.length < ballsLimit) {
+    let size = random(20, 48);
+    let ball = new Ball(
+      // ball position always drawn at least one ball width
+      // away from the edge of the canvas, to avoid drawing errors
+      new Vector(random(0 + size,width - size), random(0 + size,height - size)), //coordinate
+      new Vector(random(-5,5), random(-5,5)),  //velocity
+      true, //exists
+      randomColor(),  //color
+      size,  //size
+      size*size, //mass,
+      0
+    );
+    balls.push(ball);
+    ballsCount +=1;
+    paragraph.textContent = 'Balls count: ' + ballsCount + '.';
+}}
+createBalls();
 
-
-
-function EvilCircle(x, y, vx, vy, exists, size, color, mass){
-  Shape.call(this, x, y, vx, vy, exists);
-  this.size = size;
+function EvilCircle(coordinate, velocity, exists, size, color, mass){
+  Shape.call(this, coordinate, velocity, exists);
   this.color = color;
+  this.size = size;
   this.mass = mass;
 }
 EvilCircle.prototype = Object.create(Shape.prototype);
 EvilCircle.prototype.constructor = EvilCircle;
 
 EvilCircle.prototype.draw = function(){
-    if (this.exists == true){
+    if (this.exists){
       ctx.beginPath();
       ctx.lineWidth = 4;
       ctx.strokeStyle = this.color;
       this.size = Math.sqrt(this.mass);
-      ctx.arc(this.x, this.y, this.size, 0, 2 * Math.PI);
+      ctx.arc(this.coordinate.x, this.coordinate.y, this.size, 0, 2 * Math.PI);
       ctx.stroke();
     }
   }
 
 EvilCircle.prototype.checkBounds = function(){
     if (this.exists){
-      if ((this.x + this.size) >= width) {
-        this.x -= Math.abs(this.x+this.size-width);//+this.size*Number((this.x + this.size) > width)
-        this.vx = -(this.vx*tension);
+      if ((this.coordinate.x + this.size) >= width) {
+        this.coordinate.x -= Math.abs(this.coordinate.x+this.size-width);//+this.size*Number((this.coordinate.x + this.size) > width)
+        this.velocity.x = -(this.velocity.x*tension);
       }
 
-      if ((this.x - this.size) <= 0) {
-        this.x += Math.abs(this.x-this.size);  //+this.size*Number((this.x - this.size) < 0)
-        this.vx = -(this.vx*tension);
+      if ((this.coordinate.x - this.size) <= 0) {
+        this.coordinate.x += Math.abs(this.coordinate.x-this.size);  //+this.size*Number((this.coordinate.x - this.size) < 0)
+        this.velocity.x = -(this.velocity.x*tension);
       }
 
-      if ((this.y + this.size) >= height) {
-        this.y -= Math.abs(this.y+this.size-height);
-        this.vy = -(this.vy*tension);
+      if ((this.coordinate.y + this.size) >= height) {
+        this.coordinate.y -= Math.abs(this.coordinate.y+this.size-height);
+        this.velocity.y = -(this.velocity.y*tension);
       }
 
-      if ((this.y - this.size) <= 0) {
-        this.y += Math.abs(this.y-this.size);
-        this.vy = -(this.vy*tension);
+      if ((this.coordinate.y - this.size) <= 0) {
+        this.coordinate.y += Math.abs(this.coordinate.y-this.size);
+        this.velocity.y = -(this.velocity.y*tension);
       }
-      this.x +=this.vx;
-      this.y += this.vy;
     }
-
+    this.coordinate.addTo(velocity);
   }
 
 document.addEventListener("keydown", keyDownHandler, false);
@@ -186,52 +193,73 @@ function keyUpHandler(e) {
         upPressed = false;
     }
 }
+function transform(delta, rightPressed, leftPressed, upPressed, downPressed){
+  if (rightPressed){
+    delta.x ++;
+  }
+  if (leftPressed){
+    delta.x--;
+  }
+  if (upPressed){
+    delta.y --;
+  }
+  if (downPressed) {
+    delta.y++;
+  }
+  if (Math.abs(delta.x) == 1 & Math.abs(delta.y)==1){
+    delta.x = delta.x / Math.sqrt(2);
+    delta.y = delta.y / Math.sqrt(2);
+  }
+}
 EvilCircle.prototype.setControls = function () {
-  const vMag = Math.sqrt(this.vx*this.vx+this.vy*this.vy);
-  let vx = Math.abs(this.vx);
-  let vy = Math.abs(this.vy);
-  let tmp = 10*dv/Math.sqrt(this.mass);
-  if (rightPressed && (vx<vLimit || (this.vx<0 && vx>=vLimit))){
-    this.vx+=tmp;
+  let tmp = 10 * acceleration / Math.sqrt(this.mass);
+  let delta = new Vector(0,0);
+  transform(delta, rightPressed, leftPressed, upPressed, downPressed);
+  delta.x = delta.x * tmp;
+  delta.y = delta.y * tmp;
+  this.velocity.addTo(delta);
+  this.trimVelocity(vLimitation);
+}
+EvilCircle.prototype.applyForce = function () {
+  let tmp = acceleration / Math.sqrt(this.mass) * this.velocity.getMagnitude() * this.velocity.getMagnitude() / 100;
+  let force = new Vector(0,0);
+  force.x = - this.velocity.x * tmp;
+  force.y = - this.velocity.y * tmp;
+  this.velocity.addTo(force);
+  this.trimVelocity(vLimitation);
+}
+
+EvilCircle.prototype.trimVelocity = function (vLimit) {
+  if (this.velocity.getMagnitude() > vLimit){
+    this.velocity.setMagnitude(vLimit);
   }
-   if (leftPressed && (vx<vLimit || (this.vx>0 && vx>=vLimit))){
-    this.vx-=tmp;
-  }
-   if (upPressed && (vy<vLimit || (this.vy>0 && vy>=vLimit))){
-    this.vy-=tmp;
-  }
-   if (downPressed && (vy<vLimit || (this.vy<0 && vy>=vLimit))){
-    this.vy+=tmp;
-  }
-};
+}
 
 EvilCircle.prototype.collisionDetect = function() {
       for (let j = 0; j < balls.length; j++) {
-          const dx = this.x - balls[j].x;
-          const dy = this.y - balls[j].y;
+          const dx = this.coordinate.x - balls[j].coordinate.x;
+          const dy = this.coordinate.y - balls[j].coordinate.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
 
-          if (distance < this.size + balls[j].size & balls[j].exists == true) {
+          if ((distance < this.size + balls[j].size) & balls[j].exists == true) {
             balls[j].exists = false;
             ballsCount --;
             paragraph.textContent = 'Ball count: ' + ballsCount+'.';
-            this.mass += 0.5*balls[j].mass;
+            this.mass += balls[j].mass;
           }
         }
       }
-
-let evil = new EvilCircle(width/2*0.6,
-                          height/2*1.5,
-                          random(-4, 4),
-                          random(-4, 4),
-                          true,
+let velocity = new Vector(random(-4, -2),random(-4, 4));
+let coordinate = new Vector(width/2 + random(-10, 10), height / 2 + random(-10,10));
+let evil = new EvilCircle(coordinate,
+                          velocity,
+                          true,//exists
                           10,
                           'white',
                           900);
-
+framerate--;
 function loop() {
   tmp ++;
-
   if (tmp >=framerate){
     ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
     ctx.fillRect(0, 0, width, height);
@@ -240,6 +268,7 @@ function loop() {
     evil.draw();
     evil.collisionDetect();
     evil.setControls();
+    evil.applyForce();
     for (let i = 0; i < balls.length; i++) {
       if (balls[i].exists == true){
         balls[i].draw();
@@ -247,11 +276,36 @@ function loop() {
         balls[i].collisionDetect();
       }
     }
-
     tmp = 0;
-
+    if (ballsCount==0){
+      let flag;
+      let your_time = document.getElementById('timer-id').innerText;
+      let score = Number(your_time);
+      if (score<BestScore){
+        BestScore = score;
+      }
+      if (confirm("Your time: "+ your_time+"                                             \
+      Best Score: " + BestScore+ "\n\nTry again?") == true) {flag = true;}
+      else {flag = false;}
+      if (flag){
+        rightPressed = false;  leftPressed = false;  upPressed = false;  downPressed = false;
+        timer.reset();
+        let velocity = new Vector(random(-4, -2),random(-4, 4));
+        let coordinate = new Vector(width/2 + random(-10, 10), height / 2 + random(-10,10));
+        evil = new EvilCircle(coordinate,
+                                  velocity,
+                                  true,//exists
+                                  10,
+                                  'white',
+                                  900);
+        createBalls();
+      }
+    else{
+      ballsCount = 11;
+      paragraph.textContent = 'You are winner!';
+    }
   }
-
   requestAnimationFrame(loop);
+  }
 }
 loop();

@@ -25,6 +25,17 @@ h1 {
   text-shadow: 0 0 4px white;
 }
 
+#timer-id{
+  position: absolute;
+  margin: 0;
+  top: 35px;
+  right: 50%;
+  color: #aaa;
+  font-size: 40;
+  color: transparent;
+  text-shadow: 0 0 1.75px rgba(255, 255, 255);
+}
+
 p {
   position: absolute;
   margin: 0;
