@@ -6,7 +6,6 @@ const canvas = document.querySelector('canvas');
 const paragraph = document.querySelector('p');
 
 
-
 const ctx = canvas.getContext('2d');
 
 const width = canvas.width = window.innerWidth;
@@ -18,9 +17,10 @@ let BestScore = 99999;
 const tension = 80   *0.01;
 const acceleration = 100   *0.01;
 const vLimitation = 10;
-const koefficient = 10   *0.00001
+const koefficient = 10   *0.00001;
 
-const ballsLimit = 20;
+const ballsLimit = 60;
+const mass_add_koefficient = 60    *0.01;
 let ballsCount = 0;
 const timeDelation = 500;
 
@@ -99,7 +99,7 @@ let balls = [];
 function createBalls(){
   balls = [];
   while (balls.length < ballsLimit) {
-    let size = random(20, 48);
+    let size = random(24, 48);
     let ball = new Ball(
       // ball position always drawn at least one ball width
       // away from the edge of the canvas, to avoid drawing errors
@@ -159,7 +159,7 @@ EvilCircle.prototype.checkBounds = function(){
         this.velocity.y = -(this.velocity.y*tension);
       }
     }
-    this.coordinate.addTo(velocity);
+    this.coordinate.addTo(this.velocity);
   }
 
 document.addEventListener("keydown", keyDownHandler, false);
@@ -221,10 +221,10 @@ EvilCircle.prototype.setControls = function () {
   this.trimVelocity(vLimitation);
 }
 EvilCircle.prototype.applyForce = function () {
-  let tmp = acceleration / Math.sqrt(this.mass) * this.velocity.getMagnitude() * this.velocity.getMagnitude() / 100;
+  let tmp = this.mass/ (this.size*this.size * this.velocity.getMagnitude() * this.velocity.getMagnitude());
   let force = new Vector(0,0);
-  force.x = - this.velocity.x * tmp;
-  force.y = - this.velocity.y * tmp;
+  force.x = - this.velocity.x * tmp/10000;
+  force.y = - this.velocity.y * tmp/10000;
   this.velocity.addTo(force);
   this.trimVelocity(vLimitation);
 }
@@ -236,23 +236,23 @@ EvilCircle.prototype.trimVelocity = function (vLimit) {
 }
 
 EvilCircle.prototype.collisionDetect = function() {
-      for (let j = 0; j < balls.length; j++) {
-          const dx = this.coordinate.x - balls[j].coordinate.x;
-          const dy = this.coordinate.y - balls[j].coordinate.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
+  for (let j = 0; j < balls.length; j++) {
+    const dx = this.coordinate.x - balls[j].coordinate.x;
+    const dy = this.coordinate.y - balls[j].coordinate.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    if ((distance < this.size + balls[j].size) & (balls[j].exists == true ) & (this.size>=balls[j].size)) {
+      balls[j].exists = false;
+      ballsCount --;
+      paragraph.textContent = 'Ball count: ' + ballsCount+'.';
+      this.mass += mass_add_koefficient * balls[j].mass;
+    }
+  }
+}
 
-          if ((distance < this.size + balls[j].size) & balls[j].exists == true) {
-            balls[j].exists = false;
-            ballsCount --;
-            paragraph.textContent = 'Ball count: ' + ballsCount+'.';
-            this.mass += balls[j].mass;
-          }
-        }
-      }
-let velocity = new Vector(random(-4, -2),random(-4, 4));
-let coordinate = new Vector(width/2 + random(-10, 10), height / 2 + random(-10,10));
-let evil = new EvilCircle(coordinate,
-                          velocity,
+let vel = new Vector(random(-4, -2),random(-4, 4));
+let coord = new Vector(width/2 + random(-10, 10), height / 2 + random(-10,10));
+let evil = new EvilCircle(coord,
+                          vel,
                           true,//exists
                           10,
                           'white',
